@@ -1,20 +1,32 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import BottomTabNavigator from './Screens/BottomTabNavigator';
+import React, { useEffect, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import WelcomePage from './Screens/WelcomePage';
+import LoginSignUpForm from './Screens/FormScreen';
+import { createStackNavigator } from '@react-navigation/stack';
+import { auth } from './FirebaseConfig';
+import { User } from 'firebase/auth';
 
+const Stack = createStackNavigator();
 export default function App() {
+
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    onAuthStateChanged(auth, (user) => {
+      console.log(user);
+      setUser(user);
+    })
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName='LoginSignUpForm'>
+          {user ? <Stack.Screen name="BottomTab" component={BottomTabNavigator} /> : <Stack.Screen name="LoginSignUpForm" component={LoginSignUpForm} />}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
