@@ -1,58 +1,96 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, Image, View, TouchableOpacity, TextInput, Button, Animated } from 'react-native';
+import { StyleSheet, Text, Image, View, TouchableOpacity, TextInput, Button, Keyboard, TouchableWithoutFeedback, Modal } from 'react-native';
 import { Camera, CameraType, FlashMode } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-
-import { db } from '../FirebaseConfig';
-import { addDoc, collection, setDoc } from 'firebase/firestore';
+import { auth, db, storage } from '../FirebaseConfig';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-async function writeData(formData) {
-  try {
-    // let doc = await setDoc(doc(db, "Students", 'Information'), formData)
-    let doc = await addDoc(collection(db, 'Students'), formData);
-    console.log(doc);
-  }
-  catch (e) {
-    console.error("Error Message:" + e)
-  }
-
-}
-
-
-
-export default function CameraScreen() {
-  useEffect(() => {
-    <CameraScreen />
-  }, [])
-  const [formData, setFormData] = useState({
-    caption: '',
-    description: '',
-  });
-
-  const handleChange = (key, value) => {
-    setFormData({ ...formData, [key]: value });
-  };
-
-  const handleSubmit = () => {
-    console.log(formData);
-    setFormData({
-      caption: '',
-      description: '',
-    });
-    writeData(formData);
-  };
+import { ScrollView } from 'react-native-gesture-handler';
+import { addDoc, collection } from 'firebase/firestore';
+export default function CameraScreen({ onClose }) {
 
   const [cameraType, setCameraType] = useState(CameraType.back);
   const [isPreview, setIsPreview] = useState(false);
-  const [capturedImage, setCapturedImage] = useState(null);
   const [flashMode, setFlashMode] = useState(FlashMode.off);
   const [isRecording, setIsRecording] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [image, setImage] = useState(null);
+  const [caption, setCatpion] = useState('');
   const cameraRef = useRef(null);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [imgInfo, setImgInfo] = useState('');
 
+  useEffect(() => {
+    <CameraScreen />
+  }, [])
+
+  const handleSubmit = async () => {
+    try {
+      const userId = auth.currentUser?.uid; // Get the current user's ID (Assuming you've set up Firebase Authentication)
+      if (!userId) {
+        console.log('User not authenticated');
+        return;
+      }
+      const newImageInfo = await getRandomImage();
+      setImgInfo(newImageInfo);
+      const data = {
+        caption,
+        userId,
+        image: imgInfo,
+        createdAt: new Date(),
+        displayName: auth.currentUser.displayName,
+      };
+      console.log(imgInfo)
+
+      // Reference to the Firestore collection
+      if (imgInfo) {
+        await addDoc(collection(db, 'post_data'), data)
+          .then(() => {
+            alert("Success!")
+            // Clear the caption after successful submission
+            setCatpion('');
+            setImage(null);
+            console.log('Data submitted successfully!');
+          })
+      } else {
+        alert("Try Again")
+      }
+    } catch (error) {
+      console.error('Error submitting data:', error);
+    }
+  };
+
+  const getRandomImage = async () => {
+    try {
+      const response = await fetch('https://source.unsplash.com/random/800x800?sig=${Math.random()}');
+      const imageUrl = response.url;
+      return imageUrl;
+    } catch (error) {
+      console.error('Error fetching random image:', error);
+      return null;
+    }
+  };
+
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    // Clean up listeners when component is unmounted
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -61,15 +99,12 @@ export default function CameraScreen() {
       aspect: [4, 3],
       quality: 1,
     });
-
     console.log(result);
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
     }
   };
-
-
 
   const openCamera = async () => {
     const { status } = await Camera.requestCameraPermissionsAsync();
@@ -86,13 +121,13 @@ export default function CameraScreen() {
   const takePicture = async () => {
     if (cameraRef.current) {
       const { uri } = await cameraRef.current.takePictureAsync();
-      setCapturedImage(uri);
+      setImage(uri);
       setIsPreview(true);
     }
   };
 
   const retakePicture = () => {
-    setCapturedImage(null);
+    setImage(null);
     setIsPreview(false);
   };
 
@@ -132,11 +167,10 @@ export default function CameraScreen() {
           style={styles.camera}
           type={cameraType}
           ref={cameraRef}
-          flashMode={flashMode}
-          autoFocus={Camera.Constants.AutoFocus.on}
-        >
+          ratio='4:3'
+          flashMode={flashMode}>
 
-          <TouchableOpacity style={{ bottom: 500, left: 10 }} onPress={closeCamera}>
+          <TouchableOpacity style={{ bottom: 600, left: 10 }} onPress={closeCamera}>
             <Ionicons name="close-outline" size={34} color="white" />
           </TouchableOpacity>
           <View style={styles.iconsContainer}>
@@ -178,8 +212,11 @@ export default function CameraScreen() {
         {
           isPreview && (
             <View style={styles.previewContainer}>
+              <TouchableOpacity onPress={closeCamera} style={{ backgroundColor: 'gray', borderRadius: 20, margin: 10 }}>
+                <Text style={{ alignItems: 'center', padding: 10 }}>Okay</Text>
+              </TouchableOpacity>
               <Image
-                source={{ uri: capturedImage }}
+                source={{ uri: image }}
                 style={styles.preview}
                 useNativeControls
                 resizeMode="contain"
@@ -193,36 +230,50 @@ export default function CameraScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} >
-      <Text style={styles.header}>New Post</Text>
 
-      <View>
+
+    <SafeAreaView style={styles.container} >
+
+      <View style={{ flexDirection: 'row', borderBottomWidth: .3, width: '100%', marginBottom: 30 }}>
+        <TouchableOpacity style={styles.closeButton} onPress={onClose}><Text style={styles.header}>Cancel</Text></TouchableOpacity>
+        <Text style={styles.header}>New Post</Text>
+      </View>
+      <TouchableWithoutFeedback onPress={dismissKeyboard}>
         <TextInput
           multiline
-          numberOfLines={20}
           style={styles.desInput}
           placeholder="Whats on your mind!"
-          value={formData.age}
-          onChangeText={(text) => handleChange('description', text)}
+          value={caption}
+          autoFocus={false}
+          onChangeText={(text) => setCatpion(text)}
         />
-        <TouchableOpacity onPress={handleSubmit}>
-          <Button title="Upload" />
+      </TouchableWithoutFeedback>
+      <TouchableOpacity style={{ position: 'relative', top: 10, left: 120 }} >
+        <Button title="Upload" onPress={handleSubmit} />
+      </TouchableOpacity>
+
+      <View style={styles.attach}>
+        <TouchableOpacity onPress={pickImage}><Ionicons name="attach-outline" size={35} /></TouchableOpacity>
+        <TouchableOpacity onPress={openCamera}>
+          <Ionicons name='camera-outline' size={35} />
         </TouchableOpacity>
       </View>
-      <TouchableOpacity onPress={openCamera} style={styles.cameraIcon}>
-        <Ionicons name='camera-outline' size={45} />
-      </TouchableOpacity>
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <TouchableOpacity onPress={pickImage}><Ionicons name="attach-outline" size={40} /></TouchableOpacity>
-        {image && <Image source={{ uri: image }} style={{ width: 200, height: 200 }} />}
-      </View>
+
+      <ScrollView>
+        <Image
+          source={{ uri: image }}
+          style={styles.showImage}
+          useNativeControls
+          resizeMode="contain"
+        />
+      </ScrollView>
     </SafeAreaView>
   )
 }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: 100,
+    marginTop: 10,
     alignItems: 'center'
   },
   container2: {
@@ -230,8 +281,13 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   header: {
-    fontSize: 24,
-    textAlign: 'center'
+    fontSize: 18,
+    textAlign: 'center',
+    marginRight: 70,
+    marginLeft: 15,
+    textAlign: 'center',
+    marginTop: 5,
+    marginBottom: 5
   },
   camera: {
     flex: 1,
@@ -244,29 +300,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 50,
   },
   iconContainer: {
-    padding: 10,
+    padding: 20,
+    marginBottom: 40
   },
   previewContainer: {
-    backgroundColor: 'black',
+    backgroundColor: 'white',
     alignItems: 'center',
   },
   preview: {
     width: 300,
-    height: 400,
+    height: 500,
     borderRadius: 10,
+    padding: 30,
+    marginBottom: 30
   },
-  faceDetectionContainer: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: 5,
-    padding: 10,
-  },
-  faceDetectionText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: 'black',
+  showImage: {
+    width: 300,
+    height: 500,
+    borderRadius: 20,
+    padding: 30,
+    marginBottom: 30
   },
   inputs: {
     padding: 10,
@@ -276,13 +329,21 @@ const styles = StyleSheet.create({
     borderRadius: 10
   },
   desInput: {
-    height: 100,
+    position: 'relative',
     width: 300,
+    height: 100,
     padding: 10,
-    margin: 6,
+    borderRadius: 10,
+    backgroundColor: "grey"
   },
   cameraIcon: {
-    bottom: 280,
-    left: 150,
+    bottom: 20,
+    left: 130,
+  },
+  attach: {
+    position: 'relative',
+    flexDirection: 'row',
+    right: 120,
+    bottom: 30
   }
 });

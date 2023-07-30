@@ -9,7 +9,7 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    
+
     const handleLogin = async () => {
         setLoading(true);
         try {
@@ -18,7 +18,7 @@ export default function Login() {
 
         } catch (error) {
             console.error(error)
-            alert("Sign in  Failed:" + error.message)
+            alert("Couldn't Sign in : " + error.message)
         } finally {
             setLoading(false);
         }

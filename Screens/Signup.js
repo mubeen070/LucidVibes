@@ -1,4 +1,4 @@
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, Button, TouchableOpacity } from 'react-native';
 import { ActivityIndicator } from 'react-native';
@@ -10,28 +10,42 @@ export default function Signup() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
+    const [displayName, setDisplayName] = useState('');
 
     const handleSignup = async () => {
         setLoading(true);
         try {
-            const response = await createUserWithEmailAndPassword(auth, email, password)
-                .then((response) => {
-                    const { user } = response;
-                    // Update the user's display name with first name and last name
-                    user.updateProfile({
-                        displayName: `${firstName} ${lastName}`,
-                    });
-                    console.log('User registered successfully!', user);
-                    console.log(response);
-                    alert('Check your emails');
+            const response = await createUserWithEmailAndPassword(auth, email, password);
+            const userInfo = response.user;
+            const photoURL = await getRandomImage();
+            if (photoURL) {
+                await updateProfile(userInfo, {
+                    displayName: displayName,
+                    photoURL: photoURL,
                 })
+                    .then(() => {
+                        alert("Sign up successful!")
+                    }).catch((error) => {
+                        alert(error)
+                    });
+            }
         } catch (error) {
             console.error(error)
             alert("Sign up Failed: " + error.message)
+            console.log("Sign up Failed: " + error.message)
         } finally {
             setLoading(false);
+        }
+    };
+
+    const getRandomImage = async () => {
+        try {
+            const response = await fetch('https://source.unsplash.com/random/2048x2048?sig=${Math.random()}');
+            const imageUrl = response.url;
+            return imageUrl;
+        } catch (error) {
+            console.error('Error fetching random image:', error);
+            return null;
         }
     };
 
@@ -44,16 +58,9 @@ export default function Signup() {
 
                 <TextInput
                     style={styles.input}
-                    placeholder="First Name"
+                    placeholder="Display Name"
                     autoCapitalize='none'
-                    onChangeText={(text) => setFirstName(text)}
-                />
-
-                <TextInput
-                    style={styles.input}
-                    placeholder="Last Name"
-                    autoCapitalize='none'
-                    onChangeText={(text) => setLastName(text)}
+                    onChangeText={(text) => setDisplayName(text)}
                 />
                 <TextInput
                     style={styles.input}

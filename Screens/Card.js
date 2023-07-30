@@ -1,21 +1,32 @@
 import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
-import { Ionicons } from '@expo/vector-icons';
-const Card = (props) => {
+import { IconButton, Menu } from 'react-native-paper';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useState } from "react";
 
+
+const Card = (props) => {
     return (
         <View style={styles.continer}>
             <View style={styles.pinContainer}>
                 <TouchableOpacity >
-                    <Image source={props.image} style={styles.image} />
+                    <Image source={{ uri: props.image }} style={styles.image} />
                 </TouchableOpacity>
                 <View style={styles.iconContainer}>
 
-                    <Ionicons style={styles.icon} name='heart-outline' size={30} />
-                    <Ionicons style={styles.icon} name='chatbubble-outline' size={30} />
-                    <Ionicons style={styles.icon} name='send-outline' size={30} />
+                    <TouchableOpacity>
+                        <Ionicons style={styles.icon} name='heart-outline' size={30} />
+                    </TouchableOpacity>
+                    <TouchableOpacity>
+                        <Ionicons style={styles.icon} name='chatbubble-outline' size={30} />
+                    </TouchableOpacity>
+                    <TouchableOpacity>
+                        <Ionicons style={styles.icon} name='send-outline' size={30} />
+                    </TouchableOpacity>
                 </View>
-                <Text style={styles.title}>{props.title}</Text>
-                <Text style={styles.description}>{props.description}</Text>
+
+                <View style={{ flexDirection: 'row' }}>
+                    <Text style={styles.title}>{props.title} <Text style={{ fontWeight: '100', }} >{props.description}</Text> </Text>
+                </View>
             </View>
         </View>
     )
@@ -32,7 +43,9 @@ const styles = StyleSheet.create({
     , pinContainer: {
         width: 350,
         marginTop: 20,
-        paddingHorizontal: 20,
+        padding: 20,
+        borderTopWidth: 0.5,
+        borderColor: 'grey'
     },
     image: {
         borderRadius: 30,
@@ -41,14 +54,9 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     title: {
-        fontSize: 18,
+        fontSize: 14,
         fontWeight: 'bold',
         marginTop: 10,
-    },
-    description: {
-        fontSize: 16,
-        color: '#888',
-        marginTop: 5,
     },
     iconContainer: {
         flex: 1,

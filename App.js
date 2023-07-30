@@ -8,6 +8,7 @@ import LoginSignUpForm from './Screens/FormScreen';
 import { createStackNavigator } from '@react-navigation/stack';
 import { auth } from './FirebaseConfig';
 import { User } from 'firebase/auth';
+import { PaperProvider } from 'react-native-paper';
 
 const Stack = createStackNavigator();
 export default function App() {
@@ -15,18 +16,20 @@ export default function App() {
   const [user, setUser] = useState(null);
   useEffect(() => {
     onAuthStateChanged(auth, (user) => {
-      console.log(user);
       setUser(user);
     })
   }, []);
 
   return (
     <>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName='LoginSignUpForm'>
-          {user ? <Stack.Screen name="BottomTab" component={BottomTabNavigator} /> : <Stack.Screen name="LoginSignUpForm" component={LoginSignUpForm} />}
-        </Stack.Navigator>
-      </NavigationContainer>
+      <PaperProvider>
+
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName='LoginSignUpForm'>
+            {user ? <Stack.Screen name="BottomTab" component={BottomTabNavigator} /> : <Stack.Screen name="LoginSignUpForm" component={LoginSignUpForm} />}
+          </Stack.Navigator>
+        </NavigationContainer>
+      </PaperProvider>
     </>
   );
 }

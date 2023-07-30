@@ -1,27 +1,53 @@
 import React from 'react';
 import { SafeAreaView, View, Text, Image, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import pins from '../ScreenData/ItemData';
-import Card from './Card';
+import ProfileCard from './ProfileCard';
 import { useState, useEffect } from 'react';
-import { auth } from '../FirebaseConfig';
+import { auth, db } from '../FirebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
+import { getDocs, query, collection, where } from 'firebase/firestore';
 
 const ProfilePage = () => {
     const [refreshing, setRefreshing] = useState(false);
-    const [data, setData] = useState(pins);
+    const [data, setData] = useState([]);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
     };
 
 
-    const onRefresh = () => {
+    const onRefresh = async () => {
         setRefreshing(true);
-        const updated = [...pins];
-        setData(updated);
+        try {
+            await readData(); // Fetch updated data
+        } catch (error) {
+            console.error('Error refreshing data:', error);
+        }
         setRefreshing(false);
     };
+
+    useEffect(() => {
+        readData();
+    }, []);
+
+    async function readData() {
+        const displayNameToMatch = auth.currentUser.displayName;
+
+        try {
+            const querySnapshot = await getDocs(
+                query(collection(db, 'post_data'), where('displayName', '==', displayNameToMatch))
+            );
+            const postData = querySnapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            }));
+            setData(postData);
+        } catch (error) {
+            console.error('Error reading data:', error);
+        }
+    }
 
     return (
         <>
@@ -30,48 +56,30 @@ const ProfilePage = () => {
             }>
                 <SafeAreaView style={styles.container}>
                     <Image
-                        source={require('../assets/cover.jpg')}
+                        source={require('../assets/cover.png')}
                         style={styles.coverPicture}
                     />
                     <SafeAreaView style={styles.container2}>
 
                         <Image
-                            source={require('../assets/profile.jpg')}
+                            source={{ uri: auth.currentUser.photoURL }}
                             style={styles.profilePicture}
                         />
-                        <Text style={styles.name}>{auth.name}</Text>
-                        <Text style={styles.username}>
-                            @lucidvibes
-                        </Text>
+                        <Text style={styles.username}>{auth.currentUser.displayName}</Text>
                         <Text style={styles.bio}>
                             God's Plan!
                         </Text>
                         <SafeAreaView style={styles.container}>
-                            <SafeAreaView style={styles.statsContainer}>
-                                <SafeAreaView style={styles.statsItem}>
-                                    <Text style={styles.statsCount}>2M</Text>
-                                    <Text style={styles.statsLabel}>Followers</Text>
-                                </SafeAreaView>
-                                <SafeAreaView style={styles.statsItem}>
-                                    <Text style={styles.statsCount}>1</Text>
-                                    <Text style={styles.statsLabel}>Following</Text>
-                                </SafeAreaView>
-                                <SafeAreaView style={styles.statsItem}>
-                                    <Text style={styles.statsCount}>128</Text>
-                                    <Text style={styles.statsLabel}>Posts</Text>
-                                </SafeAreaView>
-                            </SafeAreaView>
                             <SafeAreaView>
-
                                 {data.map((pin) => (
-                                    <Card key={pin.id} image={pin.image} title={pin.title} description={pin.description} />
+                                    <ProfileCard key={pin.id} id={pin.id} title={pin.displayName} image={pin.image} description={pin.caption} />
                                 ))}
                             </SafeAreaView>
                         </SafeAreaView>
                     </SafeAreaView>
                 </SafeAreaView>
                 <TouchableOpacity style={styles.menuButton} onPress={toggleMenu}>
-                    <Ionicons name="menu" size={40} color="white" />
+                    <Ionicons name="menu" size={40} color="black" />
                 </TouchableOpacity>
                 {isMenuOpen && (
                     <>
@@ -79,7 +87,6 @@ const ProfilePage = () => {
                             <Ionicons name="menu" size={40} color="black" />
                         </TouchableOpacity>
                         <SafeAreaView style={styles.sideMenu}>
-                            {/* Add your side menu items here */}
                             <TouchableOpacity style={styles.menuItem} onPress={() => auth.signOut()}>
                                 <Ionicons name="log-out" size={24} color="black" />
                                 <Text style={styles.menuItemText}>Logout</Text>
@@ -107,7 +114,8 @@ const styles = StyleSheet.create({
     },
     coverPicture: {
         width: '100%',
-        height: 200,
+        height: 250,
+        marginTop: -40,
     },
     profilePicture: {
         width: 150,
@@ -117,14 +125,10 @@ const styles = StyleSheet.create({
         borderColor: 'black',
         marginBottom: 20
     },
-    name: {
-        fontSize: 26,
-        fontWeight: 'bold',
-        marginBottom: 5,
-    },
     username: {
-        fontSize: 14,
-        color: 'grey',
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 5,
         marginBottom: 10,
     },
     bio: {
