@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     height: 100,
     padding: 10,
     borderRadius: 10,
-    backgroundColor: "grey"
+    borderWidth: 0.2
   },
   cameraIcon: {
     bottom: 20,
